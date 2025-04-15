@@ -155,7 +155,7 @@ function HabitCard({ habit, entries, onLogEntry, onCreateHabit }: HabitCardProps
 
 export default function Frame() {
   const { isSDKLoaded } = useFrameSDK();
-  const [habit, setHabit] = useState(null);
+  const [habit, setHabit] = useState<string | null>(null);
   const [entries, setEntries] = useState<HabitEntry[]>([]);
 
   const handleCreateHabit = (name: string) => {
