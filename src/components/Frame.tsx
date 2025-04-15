@@ -26,37 +26,47 @@ interface HabitCardProps {
 
 function HabitCard({ habit, entries, onLogEntry, onCreateHabit }: HabitCardProps) {
   const [habitName, setHabitName] = useState("");
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const today = new Date();
+  const [selectedDate, setSelectedDate] = useState(today.toISOString().split('T')[0]);
   const [weeklyStreak, setWeeklyStreak] = useState(0);
 
   const calculateWeeklyStreak = useCallback(() => {
-    let streak = 0;
     const today = new Date();
-    const oneWeekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    today.setHours(0, 0, 0, 0);
     
-    const hasEntryInLastWeek = entries.some(entry => {
+    // Check if there's an entry in the current week
+    const currentWeekStart = new Date(today);
+    currentWeekStart.setDate(today.getDate() - today.getDay());
+    
+    const hasEntryThisWeek = entries.some(entry => {
       const entryDate = new Date(entry.date);
-      return entryDate >= oneWeekAgo && entryDate <= today;
+      return entryDate >= currentWeekStart && entryDate <= today;
     });
 
-    if (hasEntryInLastWeek) {
-      streak = 1;
-      // Calculate additional weeks
-      let currentWeekStart = new Date(oneWeekAgo);
-      while (true) {
-        currentWeekStart = new Date(currentWeekStart.getTime() - 7 * 24 * 60 * 60 * 1000);
-        const weekEnd = new Date(currentWeekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
-        
-        const hasEntryInWeek = entries.some(entry => {
-          const entryDate = new Date(entry.date);
-          return entryDate >= currentWeekStart && entryDate <= weekEnd;
-        });
+    if (!hasEntryThisWeek) {
+      setWeeklyStreak(0);
+      return;
+    }
 
-        if (hasEntryInWeek) {
-          streak++;
-        } else {
-          break;
-        }
+    // Calculate streak by checking previous weeks
+    let streak = 1;
+    let weekStart = new Date(currentWeekStart);
+    weekStart.setDate(weekStart.getDate() - 7);
+    
+    while (true) {
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      
+      const hasEntryInWeek = entries.some(entry => {
+        const entryDate = new Date(entry.date);
+        return entryDate >= weekStart && entryDate <= weekEnd;
+      });
+
+      if (hasEntryInWeek) {
+        streak++;
+        weekStart.setDate(weekStart.getDate() - 7);
+      } else {
+        break;
       }
     }
 
@@ -70,13 +80,19 @@ function HabitCard({ habit, entries, onLogEntry, onCreateHabit }: HabitCardProps
   const renderGrid = () => {
     const today = new Date();
     const days = [];
-    for (let i = 0; i < 90; i++) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
+    const totalDays = Math.max(90, entries.length + 90);
+    
+    // Start from the earliest date needed
+    const startDate = new Date(today);
+    startDate.setDate(startDate.getDate() - (totalDays - 1));
+    
+    for (let i = 0; i < totalDays; i++) {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
       const dateStr = date.toISOString().split('T')[0];
       const hasEntry = entries.some(entry => entry.date === dateStr);
       
-      days.unshift(
+      days.push(
         <div
           key={dateStr}
           className={`w-4 h-4 rounded-sm ${
